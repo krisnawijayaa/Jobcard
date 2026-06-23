@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Card Tracker — Lion Group Training</title>
+<style>
+:root {
+  --bg: #070d1a;
+  --panel: #0e1629;
+  --card: #111e33;
+  --border: #1e2f4a;
+  --amber: #f59e0b;
+  --amber-dim: #78460a;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --text: #cbd5e1;
+  --text-dim: #64748b;
+  --text-bright: #f1f5f9;
+  --mono: 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; padding: 12px; min-height: 100vh; }
+
+.header { text-align: center; padding: 18px 16px 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.header .logo { font-size: 0.7rem; letter-spacing: 3px; color: var(--amber); text-transform: uppercase; margin-bottom: 4px; }
+.header h1 { font-size: 1.15rem; color: var(--text-bright); font-weight: 700; }
+.header p { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+.overall { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; }
+.ring-wrap { position: relative; flex-shrink: 0; }
+.ring-wrap canvas { display: block; }
+.ring-pct { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+.ring-pct span { display: block; font-size: 1.1rem; font-weight: 800; color: var(--amber); }
+.ring-pct small { font-size: 0.6rem; color: var(--text-dim); }
+.overall-info { flex: 1; }
+.overall-info h3 { font-size: 0.85rem; color: var(--text-bright); margin-bottom: 6px; }
+.stat-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat-pill { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+.stat-pill.belum   { background: #1f2937; color: #9ca3af; }
+.stat-pill.kumpul  { background: #1e3a5f; color: #93c5fd; }
+.stat-pill.selesai { background: #14532d; color: #86efac; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.insight { background: var(--panel); border: 1px solid var(--amber-dim); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+.insight-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+.insight-header h2 { font-size: 0.9rem; color: var(--amber); }
+.insight-header span { font-size: 0.75rem; color: var(--text-dim); }
+.insight-body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.insight-section h4 { font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+.insight-item { display: flex; align-items: flex-start; gap: 8px; background: var(--card); border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; margin-bottom: 4px; }
+.insight-item .ic { flex-shrink: 0; margin-top: 1px; }
+.insight-item .jc-tag { font-family: var(--mono); font-size: 0.7rem; color: var(--amber); margin-top: 2px; }
+.no-insight { font-size: 0.8rem; color: var(--text-dim); font-style: italic; }
+
+.data-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.data-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 10px; border: 1px solid var(--border); font-size: 0.78rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+.data-btn.export { background: #0f2a1a; border-color: #16a34a; color: #4ade80; }
+.data-btn.export:hover { background: #14532d; }
+.data-btn.import { background: #0f1e3a; border-color: #2563eb; color: #60a5fa; }
+.data-btn.import:hover { background: #1e3a5f; }
+#importFile { display: none; }
+
+.filters { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); color: var(--text-dim); cursor: pointer; font-size: 0.75rem; transition: all 0.15s; }
+.filter-btn.active { border-color: var(--amber); color: var(--amber); background: #1a1200; }
+
+.module-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+.module-header { padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; user-select: none; }
+.module-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-family: var(--mono); font-size: 0.75rem; color: var(--amber); flex-shrink: 0; min-width: 42px; text-align: center; }
+.module-name { flex: 1; font-size: 0.9rem; color: var(--text-bright); font-weight: 600; }
+.module-prog { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-dim); }
+.mod-bar-bg { width: 60px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.mod-bar-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+.chevron { color: var(--text-dim); font-size: 0.75rem; transition: transform 0.2s; }
+.module-card.open .chevron { transform: rotate(180deg); }
+.module-body { display: none; border-top: 1px solid var(--border); }
+.module-card.open .module-body { display: block; }
+
+.jc-item { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.jc-item:last-child { border-bottom: none; }
+.jc-row { display: flex; gap: 10px; align-items: flex-start; }
+.jc-left { flex: 1; }
+.jc-num { font-family: var(--mono); font-size: 0.68rem; color: var(--amber); margin-bottom: 2px; }
+.jc-desc { font-size: 0.83rem; color: var(--text-bright); line-height: 1.4; }
+.jc-meta { font-size: 0.7rem; color: var(--text-dim); margin-top: 3px; }
+.jc-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.status-select { background: var(--card); border: 1px solid var(--border); color: var(--text-bright); border-radius: 8px; padding: 4px 8px; font-size: 0.72rem; cursor: pointer; min-width: 120px; }
+.status-select.belum   { border-color: #374151; color: #9ca3af; }
+.status-select.kumpul  { border-color: #3b82f6; color: #93c5fd; }
+.status-select.selesai { border-color: #16a34a; color: #86efac; }
+.notes-btn { background: #1e293b; border: 1px dashed #334155; color: #64748b; border-radius: 7px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.notes-btn:hover { border-color: #94a3b8; color: #94a3b8; }
+.notes-btn.has-note { border-color: var(--amber); color: var(--amber); border-style: solid; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: #0e1629; border: 1px solid #1e2f4a; border-radius: 18px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.6); animation: slideUp 0.2s ease; }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-head { padding: 16px 18px 12px; border-bottom: 1px solid #1e2f4a; display: flex; gap: 10px; align-items: flex-start; }
+.modal-head-text { flex: 1; }
+.modal-jc-tag { font-family: var(--mono); font-size: 0.7rem; color: var(--amber); margin-bottom: 3px; }
+.modal-title { font-size: 0.9rem; color: var(--text-bright); font-weight: 600; line-height: 1.4; }
+.modal-close { background: #1e293b; border: none; color: #64748b; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.modal-close:hover { background: #334155; color: #e2e8f0; }
+.modal-body { flex: 1; padding: 14px 18px; overflow-y: auto; }
+.modal-body textarea { width: 100%; min-height: 280px; background: #070d1a; border: 1px solid #1e2f4a; border-radius: 10px; color: #e2e8f0; font-size: 0.9rem; padding: 12px 14px; resize: none; font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.8; outline: none; transition: border-color 0.15s; }
+.modal-body textarea:focus { border-color: var(--blue); }
+.modal-body textarea::placeholder { color: #334155; }
+.modal-foot { padding: 10px 18px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #1e2f4a; }
+.modal-saved { font-size: 0.75rem; color: var(--green); height: 16px; }
+.modal-foot-right { display: flex; gap: 8px; }
+.btn-clear { padding: 7px 14px; border-radius: 8px; border: 1px solid #374151; background: none; color: #64748b; font-size: 0.8rem; cursor: pointer; }
+.btn-clear:hover { border-color: #ef4444; color: #f87171; }
+.btn-done { padding: 7px 18px; border-radius: 8px; border: none; background: #2563eb; color: white; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.btn-done:hover { background: #1d4ed8; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; border: 1px solid var(--border); color: var(--text-bright); padding: 10px 18px; border-radius: 10px; font-size: 0.82rem; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+@media (max-width: 400px) {
+  .jc-row { flex-direction: column; }
+  .jc-right { align-items: flex-start; }
+  .status-select { min-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Lion Group Training Center</div>
+  <h1>📋 Job Card Tracker</h1>
+  <p>Avionic · Instrument · Electrical &amp; Radio — C1, C2 &amp; CA</p>
+</div>
+
+<div class="overall">
+  <div class="ring-wrap">
+    <canvas id="ringCanvas" width="80" height="80"></canvas>
+    <div class="ring-pct"><span id="ringPct">0%</span><small>selesai</small></div>
+  </div>
+  <div class="overall-info">
+    <h3>Progress Keseluruhan</h3>
+    <div class="stat-row" id="statRow"></div>
+  </div>
+</div>
+
+<div class="insight">
+  <div class="insight-header" onclick="toggleInsight()">
+    <h2>💡 Insight</h2>
+    <span id="insightToggle">▼ Tampilkan</span>
+  </div>
+  <div class="insight-body" id="insightBody" style="display:none"></div>
+</div>
+
+<div class="data-bar">
+  <button class="data-btn export" onclick="exportData()">💾 Export Data</button>
+  <button class="data-btn import" onclick="document.getElementById('importFile').click()">📂 Import Data</button>
+  <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="setFilter('all',this)">Semua</button>
+  <button class="filter-btn" onclick="setFilter('belum',this)">Belum</button>
+  <button class="filter-btn" onclick="setFilter('kumpul',this)">Menunggu Dinilai</button>
+  <button class="filter-btn" onclick="setFilter('selesai',this)">Selesai</button>
+</div>
+
+<div id="moduleList"></div>
+
+<!-- Notes Modal -->
+<div class="modal-overlay" id="notesModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-head-text">
+        <div class="modal-jc-tag" id="modalJcTag"></div>
+        <div class="modal-title" id="modalTitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="modalTA" placeholder="Tulis catatan, poin penting, rumus, atau hal yang perlu diingat..."></textarea>
+    </div>
+    <div class="modal-foot">
+      <div class="modal-saved" id="modalSaved"></div>
+      <div class="modal-foot-right">
+        <button class="btn-clear" onclick="clearNote()">🗑 Hapus</button>
+        <button class="btn-done" onclick="closeModal()">Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────
+const MODULES = [
+  { id:'A', name:'Technical English', jobs:[
+    { jc:'JC-TE-001', label:'JC:TE/001', desc:'Practice reading and understanding Aircraft Maintenance Manual (AMM), Wiring Diagram Manual (WDM), System Schematic Manual (SSM), and Illustrated Part Catalog (IPC)', hrs:1 }
+  ]},
+  { id:'12', name:'Electrical System', jobs:[
+    { jc:'JC-EL-001', label:'JC.EL/001', desc:'Power supplies: Batteries — Load add/Nickel Cadmium battery Maintenance Practices', hrs:16 },
+    { jc:'JC-EL-002', label:'JC.EL/002', desc:'AC Generator — Auxiliary Power Unit (APU): Removal and Installation of APU Generator', hrs:6 },
+    { jc:'JC-EL-003', label:'JC.EL/003', desc:'DC Generation', hrs:12 },
+    { jc:'JC-EL-005', label:'JC.EL/005', desc:'Fire Protection — Auxiliary Power Units (APU) Fire Protection', hrs:8 },
+    { jc:'JC-EL-007', label:'JC.EL/007', desc:'Power Distribution Systems', hrs:12 },
+    { jc:'JC-EL-008', label:'JC.EL/008', desc:'Circuit Protection Devices', hrs:4 },
+    { jc:'JC-EL-009', label:'JC.EL/009', desc:'Circuit Controlling Devices', hrs:4 },
+    { jc:'JC-EL-018', label:'JC.EL/018', desc:'Ignition Systems (Piston Engines)', hrs:10 },
+    { jc:'JC-EL-019', label:'JC.EL/019', desc:'Ignition Systems (Turbine Engine)', hrs:8 }
+  ]},
+  { id:'13', name:'Instrument Systems', jobs:[
+    { jc:'JC-IN-003', label:'JC:IN/003', desc:'Terminology and Conversion of Instrument', hrs:12 },
+    { jc:'JC-IN-005', label:'JC:IN/005', desc:'Pilot Static Systems', hrs:16 },
+    { jc:'JC-IN-006', label:'JC:IN/006', desc:'Altimeter', hrs:16 },
+    { jc:'JC-IN-007', label:'JC:IN/007', desc:'Vertical Speed Indicator', hrs:16 },
+    { jc:'JC-IN-008', label:'JC:IN/008', desc:'Air Speed Indicator', hrs:8 },
+    { jc:'JC-IN-009', label:'JC:IN/009', desc:'Miscellaneous Altitude Systems', hrs:8 },
+    { jc:'JC-IN-010', label:'JC:IN/010', desc:'Servo Altimeter and Air Data Computers', hrs:12 },
+    { jc:'JC-IN-011', label:'JC:IN/011', desc:'Instrument Pneumatic Systems and Direct Reading Gauges', hrs:12 },
+    { jc:'JC-IN-012', label:'JC:IN/012', desc:'Temperature Indicator', hrs:12 },
+    { jc:'JC-IN-013', label:'JC:IN/013', desc:'Fuel Flow and Fuel Quantity Indicating Systems', hrs:12 },
+    { jc:'JC-IN-014', label:'JC:IN/014', desc:'DC Synchronous Systems and Engine Speed Indicating System', hrs:8 },
+    { jc:'JC-IN-015', label:'JC:IN/015', desc:'Engine Indicating Systems', hrs:12 },
+    { jc:'JC-IN-016', label:'JC:IN/016', desc:'Gyroscopic Principles', hrs:16 },
+    { jc:'JC-IN-017', label:'JC:IN/017', desc:'Artificial Horizon (AH)', hrs:12 },
+    { jc:'JC-IN-018', label:'JC:IN/018', desc:'Turn and Bank Indicator', hrs:8 },
+    { jc:'JC-IN-019', label:'JC:IN/019', desc:'Directional Gyres (DG)', hrs:12 },
+    { jc:'JC-IN-020', label:'JC:IN/020', desc:'Compass Systems', hrs:24 },
+    { jc:'JC-IN-022', label:'JC:IN/022', desc:'Digital Flight Data Recording Systems (DFDRG)', hrs:23 }
+  ]},
+  { id:'15', name:'Digital Technic', jobs:[
+    { jc:'JC-DT-001', label:'JC:DT/001', desc:'Decimal to Binary Conversion', hrs:8 },
+    { jc:'JC-DT-002', label:'JC:DT/002', desc:'Octal and Hexadecimal Conversion', hrs:8 },
+    { jc:'JC-DT-003', label:'JC:DT/003', desc:'Signed Number Calculation', hrs:8 },
+    { jc:'JC-DT-005', label:'JC:DT/005', desc:'Logic Circuits', hrs:8 }
+  ]},
+  { id:'16', name:'Avionic Maintenance Practices', jobs:[
+    { jc:'JC-AMP-001', label:'JC:AMP/001', desc:'Aircraft and Workshop Safety Precautions', hrs:8 },
+    { jc:'JC-AMP-002', label:'JC:AMP/002', desc:'Principles of Workshop Practices', hrs:10 },
+    { jc:'JC-AMP-003', label:'JC:AMP/003', desc:'General Purpose Tools', hrs:10 },
+    { jc:'JC-AMP-004', label:'JC:AMP/004', desc:'General Purpose Power Tools', hrs:32 },
+    { jc:'JC-AMP-005', label:'JC:AMP/005', desc:'Precision Measuring Tools', hrs:16 },
+    { jc:'JC-AMP-007', label:'JC:AMP/007', desc:'Bolts, Studs, Screws and Fasteners', hrs:16 },
+    { jc:'JC-AMP-009', label:'JC:AMP/009', desc:'Engineering Drawing and Diagrams', hrs:16 },
+    { jc:'JC-AMP-010', label:'JC:AMP/010', desc:'Electrical Cables and Connectors', hrs:24 },
+    { jc:'JC-AMP-011', label:'JC:AMP/011', desc:'Soldering', hrs:32 },
+    { jc:'JC-AMP-012', label:'JC:AMP/012', desc:'General Test Equipment for Avionics', hrs:16 },
+    { jc:'JC-AMP-013', label:'JC:AMP/013', desc:'Aerodynamics', hrs:24 },
+    { jc:'JC-AMP-014', label:'JC:AMP/014', desc:'Aircraft Handling', hrs:24 }
+  ]},
+  { id:'17', name:'Auto-Flight System', jobs:[
+    { jc:'JC-AF-001', label:'JC:AF/001', desc:'Modes of Operation: Roll Channel', hrs:8 },
+    { jc:'JC-AF-002', label:'JC:AF/002', desc:'Modes of Operation: Pitch Channel', hrs:16 },
+    { jc:'JC-AF-003', label:'JC:AF/003', desc:'Yaw Dampers', hrs:16 },
+    { jc:'JC-AF-006', label:'JC:AF/006', desc:'Flight Director Systems', hrs:8 }
+  ]},
+  { id:'19', name:'Radio Navigation', jobs:[
+    { jc:'JC-RD-002', label:'JC:RD/002', desc:'Fundamentals and Components of Inertial Navigation Systems (INS)', hrs:16 },
+    { jc:'JC-RD-003', label:'JC:RD/003', desc:'Reference System Stabilization', hrs:8 },
+    { jc:'JC-RD-004', label:'JC:RD/004', desc:'Operation Platforms', hrs:8 },
+    { jc:'JC-RD-005', label:'JC:RD/005', desc:'Accelerometer Corrections', hrs:4 },
+    { jc:'JC-RD-006', label:'JC:RD/006', desc:'Platform Alignment INS', hrs:8 },
+    { jc:'JC-RD-007', label:'JC:RD/007', desc:'System Integration INS', hrs:8 },
+    { jc:'JC-RD-010', label:'JC:RD/010', desc:'Inertial Reference System (IRS)', hrs:8 },
+    { jc:'JC-RD-013', label:'JC:RD/013', desc:'Circuit Analysis', hrs:8 },
+    { jc:'JC-RD-018', label:'JC:RD/018', desc:'High Frequency (HF) Communication Systems', hrs:8 },
+    { jc:'JC-RD-019', label:'JC:RD/019', desc:'Very High Frequency (VHF) Communication Systems', hrs:8 },
+    { jc:'JC-RD-020', label:'JC:RD/020', desc:'Emergency Locator Transmitter (ELT)', hrs:8 },
+    { jc:'JC-RD-021', label:'JC:RD/021', desc:'Audio Systems', hrs:8 },
+    { jc:'JC-RD-022', label:'JC:RD/022', desc:'Cockpit Voice Recorder (CVR)', hrs:16 },
+    { jc:'JC-RD-023', label:'JC:RD/023', desc:'Automatic Direction Finder (ADF) Systems', hrs:16 },
+    { jc:'JC-RD-024', label:'JC:RD/024', desc:'Very High Frequency Omnidirectional Radio (VOR) Systems', hrs:16 },
+    { jc:'JC-RD-025', label:'JC:RD/025', desc:'Instrument Landing Systems (ILS)', hrs:16 },
+    { jc:'JC-RD-028', label:'JC:RD/028', desc:'Distance Measuring Equipment (DME)', hrs:16 },
+    { jc:'JC-RD-030', label:'JC:RD/030', desc:'Air Traffic Control (ATC) Transponder Systems', hrs:16 },
+    { jc:'JC-RD-031', label:'JC:RD/031', desc:'Radio Altimeter Systems', hrs:16 },
+    { jc:'JC-RD-033', label:'JC:RD/033', desc:'Satellite Navigation Systems', hrs:16 },
+    { jc:'JC-RD-034', label:'JC:RD/034', desc:'Weather Avoidance Systems', hrs:8 },
+    { jc:'JC-RD-035', label:'JC:RD/035', desc:'Traffic and Collision Avoidance Systems (TCAS)', hrs:8 }
+  ]},
+  { id:'20', name:'Human Factor', jobs:[
+    { jc:'JC-MF-001', label:'JC.MF/001', desc:'Communication Skills Exercise', hrs:4 },
+    { jc:'JC-MF-002', label:'JC.MF/002', desc:'Team Work Group', hrs:4 },
+    { jc:'JC-MF-003', label:'JC.MF/003', desc:'Management Performance', hrs:4 },
+    { jc:'JC-MF-004', label:'JC.MF/004', desc:'Situation Exercises', hrs:4 },
+    { jc:'JC-MF-005', label:'JC.MF/005', desc:'Awareness Exercises', hrs:4 },
+    { jc:'JC-MF-006', label:'JC.MF/006', desc:'Reporting and Investigation Error Exercise', hrs:4 },
+    { jc:'JC-MF-007', label:'JC.MF/007', desc:'Document Design', hrs:4 }
+  ]}
+];
+
+// Build lookup map
+const JC_MAP = {};
+MODULES.forEach(mod => mod.jobs.forEach(j => { JC_MAP[j.jc] = { ...j, modId: mod.id, modName: mod.name }; }));
+
+// ── STORAGE ───────────────────────────────────────────────
+const S_KEY = 'lgtr_status_v1';
+const N_KEY = 'lgtr_notes_v1';
+
+function loadStatus() { return JSON.parse(localStorage.getItem(S_KEY) || '{}'); }
+function saveStatus(d) { localStorage.setItem(S_KEY, JSON.stringify(d)); }
+function loadNotes()  { return JSON.parse(localStorage.getItem(N_KEY)  || '{}'); }
+function saveNotes(d) { localStorage.setItem(N_KEY,  JSON.stringify(d)); }
+
+function setStatus(jc, val) {
+  const d = loadStatus(); d[jc] = val; saveStatus(d); renderAll();
+}
+function setNote(jc, val) {
+  const d = loadNotes();
+  if (val.trim() === '') delete d[jc]; else d[jc] = val;
+  saveNotes(d);
+}
+
+// ── STATUS CONFIG ─────────────────────────────────────────
+const STATUS = {
+  belum:  { label:'⬜ Belum Dikerjakan',                  dot:'#374151' },
+  kumpul: { label:'📥 Sudah Dikumpulkan — Menunggu Dinilai', dot:'#3b82f6' },
+  selesai:{ label:'✅ Selesai (Dinilai)',                  dot:'#22c55e' }
+};
+
+// ── COUNTS ────────────────────────────────────────────────
+function getCounts() {
+  const st = loadStatus();
+  const counts = { belum:0, kumpul:0, selesai:0 };
+  let total = 0;
+  MODULES.forEach(m => m.jobs.forEach(j => { total++; counts[st[j.jc]||'belum']++; }));
+  return { counts, total };
+}
+
+// ── RING ──────────────────────────────────────────────────
+function drawRing() {
+  const { counts, total } = getCounts();
+  const canvas = document.getElementById('ringCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,80,80);
+  const slices = [
+    { key:'selesai', color:'#22c55e' },
+    { key:'kumpul',  color:'#3b82f6' },
+    { key:'belum',   color:'#1f2937' }
+  ];
+  let start = -Math.PI/2;
+  slices.forEach(s => {
+    const angle = (total ? counts[s.key]/total : (s.key==='belum'?1:0)) * 2 * Math.PI;
+    ctx.beginPath(); ctx.arc(40,40,34,start,start+angle);
+    ctx.lineWidth=8; ctx.strokeStyle=s.color; ctx.stroke();
+    start += angle;
+  });
+  document.getElementById('ringPct').textContent = (total ? Math.round(counts.selesai/total*100) : 0) + '%';
+}
+
+function renderStats() {
+  const { counts } = getCounts();
+  const labels = { belum:'Belum', kumpul:'Menunggu Dinilai', selesai:'Selesai' };
+  document.getElementById('statRow').innerHTML = Object.entries(counts).map(([k,v]) =>
+    `<div class="stat-pill ${k}"><div class="dot" style="background:${STATUS[k].dot}"></div>${v} ${labels[k]}</div>`
+  ).join('');
+}
+
+// ── INSIGHT ───────────────────────────────────────────────
+let insightOpen = false;
+function toggleInsight() {
+  insightOpen = !insightOpen;
+  document.getElementById('insightBody').style.display = insightOpen ? 'flex' : 'none';
+  document.getElementById('insightToggle').textContent = insightOpen ? '▲ Sembunyikan' : '▼ Tampilkan';
+  if (insightOpen) renderInsight();
+}
+function renderInsight() {
+  const st = loadStatus();
+  const waiting = [];
+  MODULES.forEach(m => m.jobs.forEach(j => { if ((st[j.jc]||'belum')==='kumpul') waiting.push({m,j}); }));
+  let html = waiting.length
+    ? `<div class="insight-section"><h4>⏳ Menunggu Dinilai — ${waiting.length} Job Card</h4>${
+        waiting.map(x=>`<div class="insight-item"><div class="ic">📥</div><div><div>${x.j.desc}</div><div class="jc-tag">${x.j.label} · Modul ${x.m.id}</div></div></div>`).join('')
+      }</div>`
+    : '<div class="no-insight">Tidak ada job card yang sedang menunggu dinilai.</div>';
+  document.getElementById('insightBody').innerHTML = html;
+}
+
+// ── FILTER ────────────────────────────────────────────────
+let currentFilter = 'all';
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderModules();
+}
+
+// ── OPEN MODULES SET ──────────────────────────────────────
+const openModules = new Set();
+
+// ── MODULES ───────────────────────────────────────────────
+function renderModules() {
+  const st = loadStatus();
+  const notes = loadNotes();
+  const container = document.getElementById('moduleList');
+  container.innerHTML = '';
+
+  MODULES.forEach(mod => {
+    const done = mod.jobs.filter(j => (st[j.jc]||'belum')==='selesai').length;
+    const pct  = Math.round(done/mod.jobs.length*100);
+    let filtered = mod.jobs;
+    if (currentFilter !== 'all') filtered = mod.jobs.filter(j => (st[j.jc]||'belum')===currentFilter);
+    if (filtered.length===0 && currentFilter!=='all') return;
+
+    const card = document.createElement('div');
+    card.className = 'module-card' + (openModules.has(mod.id) ? ' open' : '');
+    card.dataset.mod = mod.id;
+
+    const rows = filtered.map(j => {
+      const s = st[j.jc] || 'belum';
+      const hasNote = !!(notes[j.jc]||'').trim();
+      const opts = Object.entries(STATUS).map(([k,v]) =>
+        `<option value="${k}"${s===k?' selected':''}>${v.label}</option>`
+      ).join('');
+      return `<div class="jc-item">
+        <div class="jc-row">
+          <div class="jc-left">
+            <div class="jc-num">${j.label}</div>
+            <div class="jc-desc">${j.desc}</div>
+            <div class="jc-meta">${j.hrs} jam</div>
+          </div>
+          <div class="jc-right">
+            <select class="status-select ${s}" data-jc="${j.jc}" onchange="handleStatus(this)">${opts}</select>
+            <button class="notes-btn${hasNote?' has-note':''}" data-jc="${j.jc}" onclick="openModal(this.dataset.jc)">
+              ${hasNote?'📝 Lihat Catatan':'+ Catatan'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="module-header" onclick="toggleMod(this.parentElement)">
+        <div class="module-badge">${mod.id}</div>
+        <div class="module-name">${mod.name}</div>
+        <div class="module-prog">
+          <div class="mod-bar-bg"><div class="mod-bar-fill" style="width:${pct}%"></div></div>
+          <span>${done}/${mod.jobs.length}</span>
+        </div>
+        <div class="chevron">▼</div>
+      </div>
+      <div class="module-body">${rows}</div>`;
+    container.appendChild(card);
+  });
+}
+
+function toggleMod(card) {
+  const id = card.dataset.mod;
+  openModules.has(id) ? openModules.delete(id) : openModules.add(id);
+  card.classList.toggle('open');
+}
+
+function handleStatus(sel) {
+  sel.className = 'status-select ' + sel.value;
+  setStatus(sel.dataset.jc, sel.value);
+}
+
+// ── NOTES MODAL ───────────────────────────────────────────
+let activeJc = null;
+let noteTimer = null;
+
+function openModal(jc) {
+  const job = JC_MAP[jc];
+  activeJc = jc;
+  document.getElementById('modalJcTag').textContent = job.label;
+  document.getElementById('modalTitle').textContent = job.desc;
+  document.getElementById('modalTA').value = loadNotes()[jc] || '';
+  document.getElementById('modalSaved').textContent = '';
+  document.getElementById('notesModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('modalTA').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('notesModal').classList.remove('open');
+  document.body.style.overflow = '';
+  renderModules();
+  activeJc = null;
+}
+
+document.getElementById('notesModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.getElementById('modalTA').addEventListener('input', function() {
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => {
+    if (!activeJc) return;
+    setNote(activeJc, this.value);
+    const el = document.getElementById('modalSaved');
+    el.textContent = '✓ Tersimpan';
+    setTimeout(() => { el.textContent = ''; }, 1500);
+  }, 600);
+});
+
+function clearNote() {
+  if (!activeJc || !confirm('Hapus catatan ini?')) return;
+  setNote(activeJc, '');
+  document.getElementById('modalTA').value = '';
+  document.getElementById('modalSaved').textContent = '✓ Dihapus';
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function exportData() {
+  const payload = { exported: new Date().toISOString(), version:2, status: loadStatus(), notes: loadNotes() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'jobcard-' + new Date().toLocaleDateString('id-ID').replace(/\//g,'-') + '.json';
+  a.click();
+  showToast('✅ Data & catatan berhasil diekspor!');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const p = JSON.parse(e.target.result);
+      if (!p.status || typeof p.status !== 'object') throw new Error();
+      saveStatus(p.status);
+      if (p.notes && typeof p.notes === 'object') saveNotes(p.notes);
+      renderAll();
+      showToast('📂 Data & catatan berhasil diimport!');
+    } catch { showToast('❌ File tidak valid.'); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── RENDER ALL ────────────────────────────────────────────
+function renderAll() {
+  drawRing();
+  renderStats();
+  renderModules();
+  if (insightOpen) renderInsight();
+}
+
+renderAll();
+</script>
+</body>
+</html>
